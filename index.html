@@ -1,0 +1,497 @@
+<html>
+<head>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js" type="text/javascript" />
+	<script src="//d3js.org/d3.v3.min.js" type="text/javascript" />
+	<style type="text/css">
+	  #simContainer{
+    height: auto;
+    width: 500px;
+    left:50px;
+    position:relative;
+}
+#wrapper{
+    background-color:lightblue;
+}
+#controls input{
+    text-align:right;
+}
+.floater{
+    float:left;
+    width:80px;
+    margin-left:5px;
+}
+div.floater{
+    text-align:center;
+}
+input.floater{
+    width:75px;
+}
+
+path.line{
+    fill:none;
+    stroke-width:3px;
+}
+svg{
+    background-color:white;
+}
+p.obit{
+    margin-left:10px;
+}
+p.obit:before{
+    background-image:url('http://clipartist.net/openclipart.org/2013/March/skull_and_bones/skull_simple_bones-999px.png');
+    background-size:contain;
+    background-repeat:no-repeat;
+    height: 1em;
+    width: 1em;
+    content: "_";
+    color: lightblue;
+    margin-right: 5px;
+}
+	</style>
+</head>
+<body>
+<div id="wrapper" style="width:600px; height:auto">
+<div id="controls" style="width:600px">
+    <div class="floater">Population</div>
+    <div class="floater">Starting Wealth</div>
+    <div class="floater">Average Trade</div>
+    <div class="floater">Tax Rate</div>
+    <div class="floater">Tax Period</div>
+    <div class="floater">Growth Rate</div>
+    <div class="floater">Simulation Length</div>
+</div>
+<div id="simContainer"></div>
+</div>
+var morgue;
+var months= [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+];
+var names = [
+			'Alice',
+			'Benjamin',
+			'Carol',
+			'Daniel',
+			'Elizabeth',
+			'Frank',
+			'Gloria',
+			'Harold',
+			'Jacqueline',
+			'Keith',
+			'Laura',
+			'Mark',
+			'Nancy',
+			'Rachel',
+			'Samuel',
+			'Tammy',
+			'Vincent',
+			'Aaron',
+			'Barbara',
+			'Carl',
+			'Danielle',
+			'Edward',
+			'Frances',
+			'Gary',
+			'Hannah',
+			'Jack',
+			'Karen',
+			'Larry',
+			'Madison',
+			'Nathan',
+			'Olivia',
+			'Patrick',
+			'Tammy',
+			'Amanda',
+			'Billy',
+			'Carolyn',
+			'David',
+			'Emily',
+			'Heather',
+			'Jacob',
+			'Katherine',
+			'Lawrence',
+			'Margaret',
+			'Nicholas',
+			'Pamela',
+			'Randy',
+			'Sandra',
+			'Thomas',
+			'Virginia',
+			'Wayne',
+			'Zachary'
+		]
+		
+		function living(person,data){
+			if(typeof person == "undefined" || typeof data[person] == "undefined" || person =='breaker')
+				return false;
+			
+			var history = data[person];
+			
+			var wealth = history[history.length - 1].close;
+
+			return wealth >= 1;
+				
+		}
+
+		function pairing(data){
+			var j = 0;
+			var match;
+			var arr = [];
+			var arr2 = [];
+			
+            for(var person in data){
+                if(living(person,data))
+				    arr.push(person)
+            }
+
+			
+			while(arr.length>1)
+			{
+				var p = arr.shift();
+				if(arr.length>0)
+				{
+					match = Math.floor(Math.random()*arr.length);
+
+					data[p].match = arr[match];
+					
+					arr2= match > 0 ? arr.slice(0,match-1) : [];
+					arr = match < arr.length -2 ? arr.slice(match+1) : [];
+				}
+				arr=arr2.concat(arr);
+			}
+            if(arr.length == 1)
+                data[arr[0]].match=arr[0];
+
+			return data;
+		}
+
+		function trade(data,amt){
+			var change;
+			var a1 = [], a2=[];
+			var ap, bp;
+			var dt;
+			var y,month,day, fuckingDate;
+            amt = amt || 1;
+			for(var person in data)
+			{
+				if(living(person,data))
+                    data[person].traded = false;
+                else if(person != 'breaker')
+                {
+                    	fuckingDate = data[person][data[person].length-1].date;
+						y = fuckingDate.getFullYear();
+						month = fuckingDate.getMonth();
+						day = fuckingDate.getDate()+1;
+
+						dt = new Date(y,month,day);
+                    data[person].push({close:0, date:dt});
+                }
+			}
+
+			for(person in data)
+			{
+				if(typeof data[person].match != "undefined"){
+					var d = data[person];
+					var m = d.match;
+
+					if(d.traded != true && data[m].traded !=true)
+					{
+						a1 = d;
+						a2 = data[m];
+						
+						fuckingDate = a1[a1.length-1].date;
+						y = fuckingDate.getFullYear();
+						month = fuckingDate.getMonth();
+						day = fuckingDate.getDate()+1;
+
+						dt = new Date(y,month,day);
+						
+
+
+						change = Math.random()>0.5 ? -1*amt: 1*amt;
+						ap = a1[a1.length-1].close*1 + change;
+						bp = a2[a2.length-1].close*1 - change;
+
+						a1.push({
+							date : dt,
+							close : ap
+						});
+
+						a2.push({
+							date : dt,
+							close : bp	
+						});
+
+						a1.traded = true;
+						a2.traded = true;
+						//window.a1=a1;
+						//window.a2=a2;
+
+					}
+				}
+
+				else if(person !="breaker"){
+					//console.log(person);
+					var date = data[person][data[person].length-1].date;
+					var year,month,day;
+					year = date.getFullYear();
+					month = date.getMonth();
+					day = date.getDate() + 1;
+
+					date = new Date(year,month,day);
+
+					var close = data[person][data[person].length-1].close;
+
+					data[person].push({date : date, close : close});
+				}
+			}
+			return data;
+		}
+
+		function simulation(cycle,d){
+                
+                var rate = $("#rate").val()/100;
+				var y=2014, m =0; 
+				if(typeof d == "undefined")
+					d=1;
+				//var p = simKeynes.country.population;
+                p={};
+                var i=$("#pop").val()*1-1;
+                for(i;i>=0;i--)
+                    p[names[i]]=$("#wealth").val()*1
+            
+				var data = {};
+				var dt = new Date(y,m,d);
+				var breaker = false;
+				
+
+				if(typeof cycle == "undefined")
+					cycle = 30*365 -1;
+                else
+                    cycle=cycle*365-1;
+
+				for(var person in p)
+				{
+					data[person]=[{close : p[person], date : dt}];
+				}
+
+				var taxPeriod = $("#period").val()*1;
+				
+				for(var i=0; i<=cycle; i++){
+					data=pairing(data);
+                    var a = $("#trade").val()*1;
+					if(i % taxPeriod == 1 && i>1)
+                        data=taxes(data,taxPeriod,rate);
+                    data=trade(data,a);
+                    
+                    
+					for(var person in data){
+						if(person != "breaker"){
+							if(!living(person,data) && morgue.indexOf(person) == -1)
+							{
+								//console.warn(person + " died!");
+                                var d = data[person][data[person].length - 1].date;
+                                var dstring = months[d.getMonth()]+ " " + d.getDate() +", " + d.getFullYear();
+								var obit = $("<p />")
+									.text(person + " died on " + dstring +".")
+                                    .addClass("obit")
+									.appendTo("#simContainer");
+                                morgue.push(person);
+								//breaker = true;
+							}
+						}
+					}
+					//if(breaker)break;
+					//data.breaker = breaker;
+				}
+				return data;
+
+			}
+function taxes(data, period, rate){
+    //Stuff
+    var taxIncome = 0;
+    var pop=0;
+
+    var Y;
+    for(person in data){
+        if(typeof data[person] != "undefined" && person !='breaker')
+        {
+            var history = data[person];
+            var entry = history.length - 1
+            var cWealth = history[entry].close;
+            //console.log(entry + " should be greater than "+period + " which should be >=0");
+            if(living(person,data)){
+                try{
+                    var sWealth = history[entry - period+1].close;
+                    var profit = cWealth - sWealth;
+                }
+                catch(e){
+                    //console.error(person + " threw an error for " +history[entry].date)
+                }
+            }
+            else
+                var profit =0
+            
+            if(profit > 0)
+            {
+                var taxes = profit * rate;
+                data[person][entry].close -= taxes;
+                taxIncome += taxes;
+                Y=data[person][entry].date.getFullYear()*1;
+            }
+            if(living(person,data))
+                pop++;
+        }
+    }
+    var initialSize = 1*$("#pop").val()*$("#wealth").val();
+    var growthRate = $("#growth").val()*1/100;
+    
+    var growth = (Math.pow(1+growthRate,Y-2013)-Math.pow(1+growthRate,Y-2014))*initialSize*period/365;
+    var individualGrowth = growth/pop;
+    for(person in data){
+        if(pop >0 && living(person,data))
+        {
+            var history = data[person];
+            var entry = history.length - 1
+            data[person][entry].close += (taxIncome+growth)/pop;
+        }
+    }
+    return data;
+    
+    
+    
+}
+
+
+		function plot(data, svg){
+//					console.log(data);
+            var target="simContainer";
+					var margin = {top: 20, right: 20, bottom: 30, left: 50},
+						width = $("#"+target).width() - margin.left - margin.right,
+						height = width/1.6;
+
+					var x = d3.time.scale()
+						.range([0, width]);
+
+					var y = d3.scale.linear()
+						.range([height, 0]);
+
+					var xAxis = d3.svg.axis()
+						.scale(x)
+						.orient("bottom");
+
+					var yAxis = d3.svg.axis()
+						.scale(y)
+						.orient("left");
+
+					var line = d3.svg.line()
+						.x(function(d) { return x(d.date); })
+						.y(function(d) { return y(d.close); });
+
+					var dom = []
+					for(var person in data)
+						person != "breaker"?dom=dom.concat(data[person]):null;
+
+					x.domain(d3.extent(dom, function(d) { return d.date; }));
+					y.domain(d3.extent(dom, function(d) { return d.close; }));
+					
+					svg.append("g")
+							.attr("class", "x axis")
+							.attr("transform", "translate(0," + height + ")")
+							.call(xAxis);
+
+					svg.append("g")
+						.attr("class", "y axis")
+						.call(yAxis)
+						.append("text")
+						.attr("transform", "rotate(-90) translate(0 -55)")
+						.attr("y", 6)
+						.attr("dy", ".71em")
+						.style("text-anchor", "end")
+						.text("Net Worth ($)");
+					var colors=[
+                        "rgba(31,73,125,1)", 
+                        "rgba(79,129,189,1)", 
+                        "rgba(192,80,77,1)", 
+                        "rgba(155,187,89,1)", 
+                        "rgba(128,100,162,1)", 
+                        "rgba(75,172,198,1)", 
+                        "rgba(247,150,70,1)",
+                        "rgba(142,180,227,1)",
+                        "rgba(185,205,229,1)",
+                        "rgba(230,185,184,1)",
+                        "rgba(215,228,189,1)",
+                        "rgba(204,193,218,1)",
+                        "rgba(183,222,232,1)",
+                        "rgba(252,213,181,1)"
+                    ];
+					var i =0;
+					for(var person in data)
+					{
+						person!="breaker"?svg.append("path")
+							.datum(data[person])
+							.attr("class", person)
+                            .attr("class", "line")
+							.attr("style", "stroke:"+ colors[i])
+							.attr("d", line).append("svg:title").text(person):null;
+						i++;
+						i == colors.length ? i-=colors.length: null;
+					}
+				}
+
+		function makeContainer(target){
+			$("#" + target).html("");
+			$("#" + target).addClass("simContainer");
+			var h1=$("<h1 />").text("Simulation").appendTo("#"+target);
+
+			var margin = {top: 20, right: 20, bottom: 30, left: 50},
+				width = $("#"+target).width() - margin.left - margin.right,
+				height = width/1.6;
+			
+
+			var svg = d3.select("#"+target).append("svg")
+					.attr("width", width + margin.left + margin.right)
+					.attr("height", height + margin.top + margin.bottom)
+					.append("g")
+					.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			return svg;
+		}
+
+        var population = $("<input type='number' value='7' max='50'>").appendTo("#controls").addClass("floater").attr("id","pop");
+        var startingWealth = $("<input type='number' value='100'>").appendTo("#controls").addClass("floater").attr("id","wealth");
+        var averageTrade = $("<input type='number' value='1'>").appendTo("#controls").addClass("floater").attr("id","trade");
+        var taxRate = $("<input type='number' value='7' max='100'>").appendTo("#controls").addClass("floater").attr("id","rate");
+        var taxPeriod = $("<input type='number' value='365' max='365'>").appendTo("#controls").addClass("floater").attr("id","period");
+        var growthRate = $("<input type='number' value='3' max='100'>").appendTo("#controls").addClass("floater").attr("id","growth");
+    var growthRate = $("<input type='number' value='30' max='100'>").appendTo("#controls").addClass("floater").attr("id","length");
+		var libertarianButton = 
+			$("<button />")
+				.text("Run Simulation")
+				.click(function(){
+					//Display
+                    morgue=[];
+					var svg = makeContainer("simContainer");
+					
+					//Logic
+                    var l = $("#length").val()*1;
+					data = simulation(l);
+
+					//plot
+					plot(data, svg);
+
+				})
+				.appendTo("#controls");
+    
+</body>
+</html>
